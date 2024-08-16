@@ -1,24 +1,55 @@
-from flask import Flask,jsonify,request
+from flask import Flask,jsonify
 from dotenv import load_dotenv
 import os
 import requests as r
+import time
 
 load_dotenv()
 
-token = os.getenv("BEARER_TOKEN")
 num_w = []
 number_set = set()
 MAX_SIZE = 10
 prev_state = []
+
+c_id = os.getenv("CLIENT_ID")
+c_secret = os.getenv("CLIENT_SECRET")
+
 current_token = None
 token_expiry = None
 
 app = Flask(__name__)
 
+def fetch_new_token():
+	global current_token,token_expiry
+	creds = {
+    "companyName": "Jain University",
+    "clientID": f"{c_id}",
+    "clientSecret": f"{c_secret}",
+    "ownerName": "Raagan U",
+    "ownerEmail": "raaganuthayaargn@gmail.com",
+    "rollNo": "21BTRCI028"
+	}
+	resp = r.post("http://20.244.56.144/test/auth", headers={"Content-Type": "application/json"}, json=creds)
+	print(creds)
+	if resp.status_code == 201:
+		token_data = resp.json()
+		current_token = token_data['access_token']
+		token_expiry = time.time() + token_data.get('expires_in', 3600) - 60
+		return True
+	else:
+		print(resp.status_code)
+		print(resp.text)
+		return False
+
 def get_numbers(num_type):
+	global current_token,token_expiry
+	if not current_token or time.time() > token_expiry:
+		print(fetch_new_token())
+	
+	print("token", current_token)
 	qualifiers = {'p': 'primes', 'f':'fibo', 'e':'even', 'r':'rand'}
 	headers = {
-	"Authorization": f"Bearer {token}",
+	"Authorization": f"Bearer {current_token}",
 	"Content-Type": "application/json"
 	}
 	url = "http://20.244.56.144/test/"+qualifiers[num_type]
